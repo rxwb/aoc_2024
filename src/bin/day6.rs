@@ -1,4 +1,5 @@
 use clap::Parser;
+use itertools::iproduct;
 use std::collections::HashSet;
 use std::fmt;
 use std::fs;
@@ -207,22 +208,20 @@ fn part2(input: State) -> u64 {
 
     let mut res = 0;
 
-    for y in 0..max_y {
-        for x in 0..max_x {
-            let mut state = input.clone();
-            if state.get_tile(x, y) == Tile::Free {
-                state.set_tile(x, y, Tile::Blocked);
-            } else {
-                continue;
+    for (y, x) in iproduct!(0..max_y, 0..max_x) {
+        let mut state = input.clone();
+        if state.get_tile(x, y) == Tile::Free {
+            state.set_tile(x, y, Tile::Blocked);
+        } else {
+            continue;
+        }
+        let mut seen = HashSet::new();
+        while let Some(guard) = state.step() {
+            if seen.contains(&guard) {
+                res += 1;
+                break;
             }
-            let mut seen = HashSet::new();
-            while let Some(guard) = state.step() {
-                if seen.contains(&guard) {
-                    res += 1;
-                    break;
-                }
-                seen.insert(guard);
-            }
+            seen.insert(guard);
         }
     }
 
