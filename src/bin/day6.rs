@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::path::PathBuf;
@@ -8,7 +9,7 @@ struct Cli {
     in_path: PathBuf,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 enum GuardDir {
     Up,
     Down,
@@ -16,7 +17,7 @@ enum GuardDir {
     Left,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 struct GuardState {
     dir: GuardDir,
     pos: (usize, usize),
@@ -37,11 +38,21 @@ struct State {
 
 impl State {
     fn get_tile(&self, x: usize, y: usize) -> Tile {
-        self.map[y][x]
+        *self
+            .map
+            .get(y)
+            .expect("Invalid y {y}")
+            .get(x)
+            .expect("Invalid x {x}")
     }
 
     fn set_tile(&mut self, x: usize, y: usize, tile: Tile) {
-        self.map[y][x] = tile;
+        *self
+            .map
+            .get_mut(y)
+            .expect("Invalid y {y}")
+            .get_mut(x)
+            .expect("Invalid x {x}") = tile;
     }
 
     fn step(&mut self) -> Option<GuardState> {
@@ -190,8 +201,32 @@ fn part1(mut input: State) -> u64 {
     res
 }
 
-fn part2(_input: State) -> u64 {
-    0
+fn part2(input: State) -> u64 {
+    let max_x = input.map[0].len();
+    let max_y = input.map.len();
+
+    let mut res = 0;
+
+    for y in 0..max_y {
+        for x in 0..max_x {
+            let mut state = input.clone();
+            if state.get_tile(x, y) == Tile::Free {
+                state.set_tile(x, y, Tile::Blocked);
+            } else {
+                continue;
+            }
+            let mut seen = HashSet::new();
+            while let Some(guard) = state.step() {
+                if seen.contains(&guard) {
+                    res += 1;
+                    break;
+                }
+                seen.insert(guard);
+            }
+        }
+    }
+
+    res
 }
 
 #[cfg(test)]
@@ -220,6 +255,6 @@ mod test {
     fn test_part2() {
         let i = parse_input(INP);
         let res = part2(i);
-        assert_eq!(res, 0);
+        assert_eq!(res, 6);
     }
 }
