@@ -8,12 +8,18 @@ struct Cli {
     in_path: PathBuf,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum GuardDir {
     Up,
     Down,
     Right,
     Left,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct GuardState {
+    dir: GuardDir,
+    pos: (usize, usize),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -26,8 +32,66 @@ enum Tile {
 #[derive(Clone, Debug)]
 struct State {
     map: Vec<Vec<Tile>>,
-    guard_pos: (usize, usize),
-    guard_dir: GuardDir,
+    guard: GuardState,
+}
+
+impl State {
+    fn get_tile(&self, x: usize, y: usize) -> Tile {
+        self.map[y][x]
+    }
+
+    fn set_tile(&mut self, x: usize, y: usize, tile: Tile) {
+        self.map[y][x] = tile;
+    }
+
+    fn step(&mut self) -> Option<GuardState> {
+        let max_x = self.map[0].len() - 1;
+        let max_y = self.map.len() - 1;
+        let (x, y) = self.guard.pos;
+        let (new_pos, new_dir) = match self.guard.dir {
+            GuardDir::Up => {
+                if y == 0 {
+                    return None;
+                }
+                match self.get_tile(x, y - 1) {
+                    Tile::Blocked => ((x, y), GuardDir::Right),
+                    Tile::Free | Tile::Visited => ((x, y - 1), GuardDir::Up),
+                }
+            }
+            GuardDir::Down => {
+                if y == max_y {
+                    return None;
+                }
+                match self.get_tile(x, y + 1) {
+                    Tile::Blocked => ((x, y), GuardDir::Left),
+                    Tile::Free | Tile::Visited => ((x, y + 1), GuardDir::Down),
+                }
+            }
+            GuardDir::Left => {
+                if x == 0 {
+                    return None;
+                }
+                match self.get_tile(x - 1, y) {
+                    Tile::Blocked => ((x, y), GuardDir::Up),
+                    Tile::Free | Tile::Visited => ((x - 1, y), GuardDir::Left),
+                }
+            }
+            GuardDir::Right => {
+                if x == max_x {
+                    return None;
+                }
+                match self.get_tile(x + 1, y) {
+                    Tile::Blocked => ((x, y), GuardDir::Down),
+                    Tile::Free | Tile::Visited => ((x + 1, y), GuardDir::Right),
+                }
+            }
+        };
+        self.set_tile(new_pos.0, new_pos.1, Tile::Visited);
+        self.guard.pos = new_pos;
+        self.guard.dir = new_dir;
+
+        Some(self.guard)
+    }
 }
 
 impl fmt::Display for State {
@@ -35,8 +99,8 @@ impl fmt::Display for State {
         let mut out = "".to_string();
         for (y, row) in self.map.iter().enumerate() {
             for (x, c) in row.iter().enumerate() {
-                if self.guard_pos == (x, y) {
-                    match self.guard_dir {
+                if self.guard.pos == (x, y) {
+                    match self.guard.dir {
                         GuardDir::Up => out.push('^'),
                         GuardDir::Down => out.push('v'),
                         GuardDir::Left => out.push('<'),
@@ -60,9 +124,9 @@ fn main() {
     let cli = Cli::parse();
     let f = fs::read_to_string(cli.in_path).unwrap();
     let i = parse_input(&f);
-    let res = part1(&i);
+    let res = part1(i.clone());
     println!("{res}");
-    let res = part2(&i);
+    let res = part2(i);
     println!("{res}");
 }
 
@@ -105,77 +169,18 @@ fn parse_input(input: &str) -> State {
 
     State {
         map,
-        guard_pos,
-        guard_dir,
+        guard: GuardState {
+            pos: guard_pos,
+            dir: guard_dir,
+        },
     }
 }
 
-fn get_tile(map: &[Vec<Tile>], pos: (usize, usize)) -> Tile {
-    map[pos.1][pos.0]
-}
-
-fn part1(input: &State) -> u64 {
-    let mut state = input.clone();
-    let max_x = state.map[0].len() - 1;
-    let max_y = state.map.len() - 1;
-    loop {
-        let (x, y) = state.guard_pos;
-        let (new_pos, new_dir) = match state.guard_dir {
-            GuardDir::Up => {
-                if y == 0 {
-                    break;
-                }
-                match get_tile(&state.map, (x, y - 1)) {
-                    Tile::Blocked => ((x, y), GuardDir::Right),
-                    Tile::Free | Tile::Visited => {
-                        state.map[y - 1][x] = Tile::Visited;
-                        ((x, y - 1), GuardDir::Up)
-                    }
-                }
-            }
-            GuardDir::Down => {
-                if y == max_y {
-                    break;
-                }
-                match get_tile(&state.map, (x, y + 1)) {
-                    Tile::Blocked => ((x, y), GuardDir::Left),
-                    Tile::Free | Tile::Visited => {
-                        state.map[y + 1][x] = Tile::Visited;
-                        ((x, y + 1), GuardDir::Down)
-                    }
-                }
-            }
-            GuardDir::Left => {
-                if x == 0 {
-                    break;
-                }
-                match get_tile(&state.map, (x - 1, y)) {
-                    Tile::Blocked => ((x, y), GuardDir::Up),
-                    Tile::Free | Tile::Visited => {
-                        state.map[y][x - 1] = Tile::Visited;
-                        ((x - 1, y), GuardDir::Left)
-                    }
-                }
-            }
-            GuardDir::Right => {
-                if x == max_x {
-                    break;
-                }
-                match get_tile(&state.map, (x + 1, y)) {
-                    Tile::Blocked => ((x, y), GuardDir::Down),
-                    Tile::Free | Tile::Visited => {
-                        state.map[y][x + 1] = Tile::Visited;
-                        ((x + 1, y), GuardDir::Right)
-                    }
-                }
-            }
-        };
-        state.guard_pos = new_pos;
-        state.guard_dir = new_dir;
-    }
+fn part1(mut input: State) -> u64 {
+    while input.step().is_some() {}
 
     let mut res = 0;
-    for line in state.map {
+    for line in input.map {
         for t in line {
             if t == Tile::Visited {
                 res += 1;
@@ -185,7 +190,7 @@ fn part1(input: &State) -> u64 {
     res
 }
 
-fn part2(_input: &State) -> u64 {
+fn part2(_input: State) -> u64 {
     0
 }
 
@@ -207,14 +212,14 @@ mod test {
     #[test]
     fn test_part1() {
         let i = parse_input(INP);
-        let res = part1(&i);
+        let res = part1(i);
         assert_eq!(res, 41);
     }
 
     #[test]
     fn test_part2() {
         let i = parse_input(INP);
-        let res = part2(&i);
+        let res = part2(i);
         assert_eq!(res, 0);
     }
 }
