@@ -19,10 +19,9 @@ fn main() {
     let cli = Cli::parse();
     let f = fs::read_to_string(cli.in_path).unwrap();
     let i = parse_input(&f);
-    let res = part1(&i);
-    println!("{res}");
-    let res = part2(&i);
-    println!("{res}");
+    let (res1, res2) = part1_2(&i);
+    println!("{res1}");
+    println!("{res2}");
 }
 
 fn parse_input(input: &str) -> Vec<Vec<u8>> {
@@ -80,8 +79,9 @@ fn find_neighbors(map: &[Vec<u8>], p: Point) -> Vec<Point> {
     res
 }
 
-fn part1(input: &[Vec<u8>]) -> usize {
-    let mut res = 0;
+fn part1_2(input: &[Vec<u8>]) -> (usize, usize) {
+    let mut res1 = 0;
+    let mut res2 = 0;
 
     for (y, line) in input.iter().enumerate() {
         for (x, &height) in line.iter().enumerate() {
@@ -92,20 +92,17 @@ fn part1(input: &[Vec<u8>]) -> usize {
                 while let Some(p) = to_check.pop() {
                     if p.height == 9 {
                         summits.insert((p.x, p.y));
+                        res2 += 1
                     } else {
                         to_check.extend(find_neighbors(input, p));
                     }
                 }
-                res += summits.len();
+                res1 += summits.len();
             }
         }
     }
 
-    res
-}
-
-fn part2(_input: &[Vec<u8>]) -> u64 {
-    0
+    (res1, res2)
 }
 
 #[cfg(test)]
@@ -124,14 +121,14 @@ mod test {
     #[test]
     fn test_part1() {
         let i = parse_input(INP);
-        let res = part1(&i);
+        let (res, _) = part1_2(&i);
         assert_eq!(res, 36);
     }
 
     #[test]
     fn test_part2() {
         let i = parse_input(INP);
-        let res = part2(&i);
-        assert_eq!(res, 0);
+        let (_, res) = part1_2(&i);
+        assert_eq!(res, 81);
     }
 }
