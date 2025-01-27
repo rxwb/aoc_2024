@@ -29,7 +29,7 @@ fn main() {
     let (i, max) = parse_input(&f);
     let res = part1(&i, max);
     println!("{res}");
-    let res = part2(&i);
+    let res = part2(&i, max);
     println!("{res}");
 }
 
@@ -139,8 +139,18 @@ fn part1(input: &HashMap<char, Vec<Point>>, max: Point) -> usize {
     res.len()
 }
 
-fn part2(_input: &HashMap<char, Vec<Point>>) -> u64 {
-    0
+fn part2(input: &HashMap<char, Vec<Point>>, max: Point) -> usize {
+    let mut res = HashSet::new();
+    for antennas in input.values() {
+        for pair in antennas.iter().combinations(2) {
+            res.insert(*pair[0]);
+            res.insert(*pair[1]);
+            for node in antinodes(*pair[0], *pair[1], max, usize::MAX) {
+                res.insert(node);
+            }
+        }
+    }
+    res.len()
 }
 
 #[cfg(test)]
@@ -169,8 +179,8 @@ mod test {
 
     #[test]
     fn test_part2() {
-        let (i, _max) = parse_input(INP);
-        let res = part2(&i);
-        assert_eq!(res, 0);
+        let (i, max) = parse_input(INP);
+        let res = part2(&i, max);
+        assert_eq!(res, 34);
     }
 }
