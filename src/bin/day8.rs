@@ -53,67 +53,76 @@ fn parse_input(input: &str) -> (HashMap<char, Vec<Point>>, Point) {
     (res, Point { x: max_x, y: max_y })
 }
 
-fn antinodes(a1: Point, a2: Point, max: Point) -> Vec<Point> {
-    fn get_node(a1: Point, a2: Point, max: Point) -> Option<Point> {
+fn antinodes(a1: Point, a2: Point, max: Point, max_multiplicator: usize) -> Vec<Point> {
+    fn get_node(a1: Point, a2: Point, max: Point, max_multiplicator: usize) -> Vec<Point> {
         let min_x = cmp::min(a1.x, a2.x);
         let max_x = cmp::max(a1.x, a2.x);
         let min_y = cmp::min(a1.y, a2.y);
         let max_y = cmp::max(a1.y, a2.y);
-        let x_diff = max_x - min_x;
-        let y_diff = max_y - min_y;
-        if a1.x < a2.x {
-            // antinode left of a1
-            if a1.x >= x_diff {
-                if a1.y < a2.y {
-                    // antinode above a1
-                    if a1.y >= y_diff {
-                        return Some(Point {
-                            x: a1.x - x_diff,
-                            y: a1.y - y_diff,
-                        });
+        let x_diff_org = max_x - min_x;
+        let y_diff_org = max_y - min_y;
+        let mut res = Vec::new();
+        for i in 1..=max_multiplicator {
+            let x_diff = x_diff_org * i;
+            let y_diff = y_diff_org * i;
+            if a1.x < a2.x {
+                // antinode left of a1
+                if a1.x >= x_diff {
+                    if a1.y < a2.y {
+                        // antinode above a1
+                        if a1.y >= y_diff {
+                            res.push(Point {
+                                x: a1.x - x_diff,
+                                y: a1.y - y_diff,
+                            });
+                        }
+                    } else {
+                        // antinode below a1
+                        if a1.y <= max.y - y_diff {
+                            res.push(Point {
+                                x: a1.x - x_diff,
+                                y: a1.y + y_diff,
+                            });
+                        } else {
+                            break;
+                        }
                     }
                 } else {
-                    // antinode below a1
-                    if a1.y <= max.y - y_diff {
-                        return Some(Point {
-                            x: a1.x - x_diff,
-                            y: a1.y + y_diff,
-                        });
-                    }
+                    break;
                 }
-            }
-        } else {
-            // antinode right of a1
-            if a1.x < max.x - x_diff {
-                if a1.y < a2.y {
-                    // antinode above a1
-                    if a1.y >= y_diff {
-                        return Some(Point {
-                            x: a1.x + x_diff,
-                            y: a1.y - y_diff,
-                        });
+            } else {
+                // antinode right of a1
+                if a1.x < max.x - x_diff {
+                    if a1.y < a2.y {
+                        // antinode above a1
+                        if a1.y >= y_diff {
+                            res.push(Point {
+                                x: a1.x + x_diff,
+                                y: a1.y - y_diff,
+                            });
+                        }
+                    } else {
+                        // antinode below a1
+                        if a1.y <= max.y - y_diff {
+                            res.push(Point {
+                                x: a1.x + x_diff,
+                                y: a1.y + y_diff,
+                            });
+                        } else {
+                            break;
+                        }
                     }
                 } else {
-                    // antinode below a1
-                    if a1.y <= max.y - y_diff {
-                        return Some(Point {
-                            x: a1.x + x_diff,
-                            y: a1.y + y_diff,
-                        });
-                    }
+                    break;
                 }
             }
         }
-        None
+        res
     }
 
     let mut res = Vec::new();
-    if let Some(p) = get_node(a1, a2, max) {
-        res.push(p);
-    }
-    if let Some(p) = get_node(a2, a1, max) {
-        res.push(p);
-    }
+    res.extend(get_node(a1, a2, max, max_multiplicator));
+    res.extend(get_node(a2, a1, max, max_multiplicator));
 
     res
 }
@@ -122,7 +131,7 @@ fn part1(input: &HashMap<char, Vec<Point>>, max: Point) -> usize {
     let mut res = HashSet::new();
     for antennas in input.values() {
         for pair in antennas.iter().combinations(2) {
-            for node in antinodes(*pair[0], *pair[1], max) {
+            for node in antinodes(*pair[0], *pair[1], max, 1) {
                 res.insert(node);
             }
         }
